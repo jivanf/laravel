@@ -127,6 +127,39 @@ class EloquentModelRelationAutoloadTest extends DatabaseTestCase
         DB::disableQueryLog();
     }
 
+    public function testSerializationDoesNotClearRelationAutoloadCallbackOnLiveModel()
+    {
+        $post = Post::create();
+        $comment = $post->comments()->create(['parent_id' => null]);
+        $comment->likes()->create();
+
+        $post->load('comments')->withRelationshipAutoloading();
+        $comment = $post->comments->first();
+        $post->unsetRelation('comments');
+
+        $serializedPost = unserialize(serialize($post));
+
+        $this->assertTrue($post->hasRelationAutoloadCallback());
+        $this->assertFalse($serializedPost->hasRelationAutoloadCallback());
+        $this->assertCount(1, $comment->likes);
+    }
+
+    public function testRelationAutoloadDelegationHandlesClearedCallback()
+    {
+        $post = SerializationClearsRelationAutoloadCallbackPost::create();
+        $comment = $post->comments()->create(['parent_id' => null]);
+        $comment->likes()->create();
+
+        $post->load('comments')->withRelationshipAutoloading();
+        $comment = $post->comments->first();
+        $post->unsetRelation('comments');
+
+        serialize($post);
+
+        $this->assertFalse($post->hasRelationAutoloadCallback());
+        $this->assertCount(1, $comment->likes);
+    }
+
     public function testRelationAutoloadChainLoadsModelsOfTheGivenClass()
     {
         $post = Post::create();
@@ -377,6 +410,18 @@ class Post extends Model
     public function tags()
     {
         return $this->hasMany(Tag::class);
+    }
+}
+
+class SerializationClearsRelationAutoloadCallbackPost extends Post
+{
+    protected $table = 'posts';
+
+    public function __sleep()
+    {
+        $this->relationAutoloadCallback = null;
+
+        return parent::__sleep();
     }
 }
 

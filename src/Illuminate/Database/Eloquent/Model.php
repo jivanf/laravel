@@ -2923,10 +2923,10 @@ abstract class Model implements Arrayable, ArrayAccess, CanBeEscapedWhenCastToSt
 
         $this->classCastCache = [];
         $this->attributeCastCache = [];
-        $this->relationAutoloadCallback = null;
-        $this->relationAutoloadContext = null;
 
         $keys = get_object_vars($this);
+
+        unset($keys['relationAutoloadCallback'], $keys['relationAutoloadContext']);
 
         if (version_compare(PHP_VERSION, '8.4.0', '>=')) {
             foreach ((new ReflectionClass($this))->getProperties() as $property) {
